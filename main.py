@@ -50,12 +50,7 @@ async def chat_completions(request: ChatCompletionRequest):
         "model": request.model,
         "choices": [{
             "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": response_content,
-                "refusal": None,
-                "annotations": []
-            },
+            "message": ChatMessage(role="assistant", content=response_content),
             "logprobs": None,
             "finish_reason": "stop"
         }]
