@@ -1,50 +1,33 @@
-from typing import List, Optional
-from pydantic import BaseModel
-import time, asyncio, json
-from fastapi import FastAPI
-from starlette.responses import StreamingResponse
+from dotenv import load_dotenv
+load_dotenv()
+import time, asyncio, json, uuid
+from typing import Annotated, List
+from fastapi import FastAPI, HTTPException, Depends
+from starlette.responses import JSONResponse
+from schemas import ChatMessage, ChatCompletionRequest
+from sqlalchemy.orm import Session
+from database import engine, get_db
+import models
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
+app = FastAPI(title='SelfServeAI')
+models.Base.metadata.create_all(bind=engine)
 
-class ChatCompletionRequest(BaseModel):
-    model: str = "mock-gpt"
-    messages: List[ChatMessage]
-    max_tokens: Optional[int] = 512
-    temperature: Optional[float] = 0.1
-    stream: Optional[bool] = False
-
-async def _resp_async_generator(model: str, text_resp: str):
-    tokens = text_resp.split(" ")
-    
-    for i, token in enumerate(tokens):
-        chunk = {
-            "id": i,
-            "object": "chat.completion.chunk",
-            "created": time.time(),
-            "model": model,
-            "choices": [{"delta": {"content": token + " "}}]
-        }
-        yield f"data: {json.dumps(chunk)}\n\n"
-        await asyncio.sleep(1)
-    
-    yield "data: [DONE]\n\n"
-
-app = FastAPI(title='OpenAI Compatible API')
+db_required = Annotated[Session, Depends(get_db)]
 
 @app.post("/chat/completions")
-async def chat_completions(request: ChatCompletionRequest):
+async def chat_completions(request: ChatCompletionRequest, db: db_required):
     if request.messages:
         response_content = "As a mock AI assistant, I received your message: " + request.messages[-1].content
     else:
-        response_content = 'As a mock AI assistant, I can only echo messages. No previous messsages found.'
+        response_content = 'As a mock AI assistant, I can only echo messages. No previous messages found.'
     
-    if request.stream:
-        return StreamingResponse(_resp_async_generator(request.model, response_content), media_type="application/x-ndjson")
+    db_interaction = models.Interaction(id=uuid.uuid4().hex, prompt=request.messages[-1].content if request.messages else "", response=response_content)
+    db.add(db_interaction)
+    db.commit()
+    db.refresh(db_interaction)
     
     return {
-        "id": "1337",
+        "id": db_interaction.id,
         "object": "chat.completion",
         "created": time.time(),
         "model": request.model,
