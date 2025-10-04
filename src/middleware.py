@@ -7,6 +7,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.auth_token = 'fake-api-key'
     
     async def dispatch(self, request, call_next):
+        if not request.url.path.startswith('/chat'):
+            return await call_next(request)
+        
         api_key = request.headers.get('authorization')
         
         if not api_key:
