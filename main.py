@@ -3,11 +3,12 @@ from dotenv import load_dotenv
 load_dotenv()
 import time, asyncio, json, uuid
 from typing import Annotated, List
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from starlette.responses import JSONResponse
 from schemas import ChatMessage, ChatCompletionRequest
 from sqlalchemy.orm import Session
 from database import engine, get_db
+from middleware import AuthMiddleware
 import models
 from slm import SmolLM
 
@@ -15,6 +16,8 @@ app = FastAPI(title='SelfServeAI')
 models.Base.metadata.create_all(bind=engine)
 if os.getenv('RESPONSE_MODE', 'mock') == 'slm':
     SmolLM.load()
+
+app.add_middleware(AuthMiddleware)
 
 db_required = Annotated[Session, Depends(get_db)]
 

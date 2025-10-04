@@ -1,7 +1,7 @@
 from openai import OpenAI
 
 client = OpenAI(
-    api_key='fake-api-key',
+    api_key='real-api-key',
     base_url='http://localhost:8000'
 )
 
