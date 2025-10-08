@@ -7,6 +7,7 @@ from .database.core import Base, engine
 from .api import add_middlewares, register_routes
 from .logging import configure_logging, LogLevels
 from contextlib import asynccontextmanager
+from .ai import LLMInterface
 
 configure_logging(LogLevels.info)
 
@@ -14,6 +15,8 @@ configure_logging(LogLevels.info)
 async def lifespan(app: FastAPI):
     if os.getenv('RESPONSE_MODE', 'mock') == 'slm':
         SmolLM.load()
+    if os.getenv('RESPONSE_MODE', 'mock') == 'openai':
+        LLMInterface.initDefaultClients()
     
     yield
     
